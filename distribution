@@ -1,0 +1,55 @@
+import pandas as pd
+import chardet
+
+# Визначення кодування файлу
+file_path = "C:\\Temp\\Python 2\\alltenders.csv"
+
+with open(file_path, 'rb') as f:
+    result = chardet.detect(f.read())
+    detected_encoding = result['encoding']
+
+print(f"Визначене кодування: {detected_encoding}")
+
+# Зчитування файлу з визначеним кодуванням, з урахуванням роздільника кома
+data = pd.read_csv(file_path, header=None, encoding=detected_encoding, delimiter=',')
+
+# Фільтрація рядків по РНОКПП, подалі аналізуємо тільки рядки з унікальними значеннями
+unique_data = data[data[4].duplicated(keep=False) == False]
+
+# Вибір відповідних колонок: вік (колонка 12), стать (колонка 13)
+ages = unique_data[12]
+genders = unique_data[13]
+
+# Створення вікових груп
+age_bins = [20, 30, 40, 50, 60, float('inf')]
+age_labels = ['20-30', '30-40', '40-50', '50-60', '60+']
+unique_data['age_group'] = pd.cut(ages, bins=age_bins, labels=age_labels, right=False)
+
+# Групування за віковими групами та розрахунок розподілу за статтю
+grouped = unique_data.groupby('age_group')[13].value_counts(normalize=True).unstack()
+
+# Виведення результатів
+print("Розподіл за статтю в кожній віковій групі:")
+for age_group, distribution in grouped.iterrows():
+    print(f"\nВікова група {age_group}:")
+    for gender, percentage in distribution.items():
+        print(f"{gender}: {percentage:.2f}%")
+
+# Визначення статі, що найчастіше зустрічається у кожній віковій групі
+most_common_gender = grouped.idxmax(axis=1)
+
+print("\nНайчастіше зустрічається стать у кожній віковій групі:")
+for age_group, gender in most_common_gender.items():
+    print(f"Вікова група {age_group}: {gender}")
+
+# Загальний розподіл за віком (фільтровані унікальні значення в колонці 4)
+age_distribution = ages.value_counts(normalize=True) * 100
+print("\nВідсотковий розподіл за віком:")
+for age, percentage in age_distribution.items():
+    print(f"Вік {age}: {percentage:.2f}%")
+
+# Загальний розподіл за статтю
+gender_distribution = genders.value_counts(normalize=True) * 100
+print("\nВідсотковий розподіл за статтю:")
+for gender, percentage in gender_distribution.items():
+    print(f"{gender}: {percentage:.2f}%")
